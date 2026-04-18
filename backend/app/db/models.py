@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Boolean, Text
 from sqlalchemy import func
-from backend.app.db.database import Base
+from app.db.database import Base
 
 #Класс для пользователя
 class User(Base):

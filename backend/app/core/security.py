@@ -1,25 +1,45 @@
+import hashlib
+import bcrypt
 from datetime import datetime, timedelta
 from typing import Optional, Any
 from jose import jwt
-from passlib.context import CryptContext
-from backend.app.core.config import settings
+from app.core.config import settings
 
-pwd_context = CryptContext(shemas=["bcrypt"], deprecated="auto")
+# Вспомогательная функция для подготовки пароля (SHA-256)
+def _prepare_password(password: str) -> bytes:
+    # Хешируем пароль в SHA-256, чтобы обойти лимит bcrypt в 72 байта.
+    # Результат всегда 64 символа (64 байта в UTF-8).
+    return hashlib.sha256(password.encode("utf-8")).hexdigest().encode("utf-8")
 
-#Для сравнения хэшированного пароля пользователя и пароля от пользователя в базе
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        # Пытаемся проверить с SHA-256 (новый формат)
+        prepared_password = _prepare_password(plain_password)
+        if bcrypt.checkpw(prepared_password, hashed_password.encode("utf-8")):
+            return True
+    except Exception:
+        pass
 
-#Непосредственно генерация хэша из пароля
+    try:
+        # Резервный вариант для старых паролей (без SHA-256)
+        # Если пароль > 72 байт, bcrypt сам выбросит ошибку, что корректно для старых записей
+        return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+    except Exception:
+        return False
+
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    # Готовим пароль (SHA-256)
+    prepared_password = _prepare_password(password)
+    # Генерируем соль и хеш
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(prepared_password, salt)
+    return hashed.decode("utf-8")
 
-#Создание JWT токена
-def create_access_token(subject: Any, expires_delta: Optional[timedelta] = None) -> str: #Any, потому что пока не знаю что передавать, либо почту, либо id пользователя
-    if expires_delta: #Задаток на будущее, вдруг понадобиться необычный токен (для восстановления пароля или что-то такое)
+def create_access_token(subject: Any, expires_delta: Optional[timedelta] = None) -> str:
+    if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES) #Обычное время жизни токена
+        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
     to_encode = {
         "exp": expire,

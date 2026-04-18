@@ -5,13 +5,13 @@ from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from backend.app.core.config import settings
-from backend.app.core import security
-from backend.app.db.database import get_db
-from backend.app.db.models import User
+from app.core.config import settings
+from app.core import security
+from app.db.database import get_db
+from app.db.models import User
 
 #Указываем, где искать токен
-reusable_oauth2 = OAuth2PasswordBearer(tokenUrl=f"{settings.PROJECT_NAME}/auth/login")
+reusable_oauth2 = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 #Проверяем токен и добываем текущего пользователя
 async def get_current_user(

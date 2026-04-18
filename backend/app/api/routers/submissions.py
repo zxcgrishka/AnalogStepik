@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from backend.app.db.database import get_db
-from backend.app.db.models import Submission, User
-from backend.app.schemas.submission import SubmissionCreate, SubmissionResponse
-from backend.app.api.deps import get_current_user
+from app.db.database import get_db
+from app.db.models import Submission, User
+from app.schemas.submission import SubmissionCreate, SubmissionResponse
+from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/submissions", tags=["Submissions"])
 
