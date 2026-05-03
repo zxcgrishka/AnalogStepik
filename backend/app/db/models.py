@@ -21,4 +21,5 @@ class Submission(Base):
     code_text = Column(Text, nullable=False)
     language = Column(String(50), nullable=False) #Не знаю, зачем добавил, пока что всё-равно только питон будет. Мб позже плюсы добавим
     status = Column(String(50), default="pending")
+    output = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

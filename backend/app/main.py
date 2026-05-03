@@ -13,4 +13,4 @@ app.include_router(submissions.router)
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to Analog Stepik API"}
+    return {"message": "print('Hello World!')"}
