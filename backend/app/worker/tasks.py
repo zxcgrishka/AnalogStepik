@@ -1,24 +1,27 @@
-import asyncio
 from app.core.celery_app import celery_app
 from app.core.runner import run_python_code
-from app.db.database import AsyncSessionLocal
+from app.db.database import SessionLocal  # Импортируем СИНХРОННУЮ сессию
 from app.db.models import Submission, Task
-from sqlalchemy import select
 
-async def process_code_async(submission_id: int, task_id: int, code_text: str):
-    # Запускаем тяжелый Docker (это синхронная операция, но для воркера это нормально)
+@celery_app.task(name="evaluate_code")
+def evaluate_code(submission_id: int, task_id: int, code_text: str):
+    """
+    Celery задача для запуска кода пользователя в Docker.
+    Теперь она полностью синхронная и стабильная.
+    """
+    # 1. Запускаем тяжелый Docker
     result = run_python_code(code_text)
     actual_output = result.get("output", "").strip()
 
-    async with AsyncSessionLocal() as session:
-        # Получаем решение и задачу из БД
-        db_sub = await session.execute(select(Submission).where(Submission.id == submission_id))
-        db_task = await session.execute(select(Task).where(Task.id == task_id))
-
-        submission = db_sub.scalars().first()
-        task = db_task.scalars().first()
+    # 2. Работаем с БД через обычный context manager
+    db = SessionLocal()
+    try:
+        # Получаем решение и задачу из БД (без await и select!)
+        submission = db.query(Submission).filter(Submission.id == submission_id).first()
+        task = db.query(Task).filter(Task.id == task_id).first()
 
         if submission and task:
+            # Логика определения статуса остается прежней
             if result.get("status") == "error":
                 submission.status = "Runtime Error"
             elif result.get("status") == "timeout":
@@ -28,12 +31,11 @@ async def process_code_async(submission_id: int, task_id: int, code_text: str):
             else:
                 submission.status = "Wrong Answer"
 
-            submission.output = actual_output # Записываем, что именно вывел код студента
-            await session.commit()
-
-@celery_app.task(name="evaluate_code")
-def evaluate_code(submission_id: int, task_id: int, code_text: str):
-    """
-    Celery задача для запуска кода пользователя в Docker.
-    """
-    asyncio.run(process_code_async(submission_id, task_id, code_text))
+            submission.output = actual_output
+            db.commit() # Синхронный коммит
+    except Exception as e:
+        db.rollback()
+        print(f"Error in worker: {e}")
+        raise e
+    finally:
+        db.close() # Всегда закрываем соединение
