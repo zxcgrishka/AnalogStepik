@@ -1,7 +1,8 @@
 import docker
-import tempfile
-import os
-import shutil
+import tarfile
+import io
+import time
+import requests
 from typing import Dict
 
 try:
@@ -10,58 +11,61 @@ except Exception as e:
     print(f"Ошибка подключения к Docker: {e}")
     client = None
 
-
 def run_python_code(code_text: str, timeout: int = 5) -> Dict[str, str]:
-    # Запускает код в изолированном Docker-контейнере.
     if client is None:
         return {"status": "error", "output": "Docker Desktop не запущен или не доступен"}
 
-    # Создаем временную папку и файл с кодом
-    temp_dir = tempfile.mkdtemp()
-    file_path = os.path.join(temp_dir, "solution.py")
-
-    with open(file_path, "w", encoding="utf-8") as f:
-        f.write(code_text)
-
+    container = None
     try:
-        # Запускаем микро-контейнер
-        container = client.containers.run(
-            image="python:3.11-slim",  # Легкий образ питона
-            command="python /code/solution.py",
-            # Прокидываем файл в контейнер ТОЛЬКО для чтения (mode: ro)
-            volumes={temp_dir: {"bind": "/code", "mode": "ro"}},
-
-            # ПРАВИЛА БЕЗОПАСНОСТИ
-            mem_limit="128m",  # Не больше 128 МБ оперативки
-            nano_cpus=500000000,  # Не больше 0.5 ядра процессора
-            network_disabled=True,  # Отключаем интернет внутри!
-            detach=True,  # Запускаем в фоне, чтобы следить за временем
+        # Создаем контейнер без запуска
+        container = client.containers.create(
+            image="python:3.11-slim",
+            command="python /solution.py",
+            mem_limit="128m",
+            nano_cpus=500000000,
+            network_disabled=True,
+            detach=True
         )
 
-        try:
-            # Ждем завершения с учетом таймаута
-            result = container.wait(timeout=timeout)
-            logs = container.logs().decode("utf-8").strip()
+        # Создаем архив в памяти с файлом solution.py
+        tar_stream = io.BytesIO()
+        with tarfile.open(fileobj=tar_stream, mode='w') as tar:
+            code_bytes = code_text.encode('utf-8')
+            tarinfo = tarfile.TarInfo(name='solution.py')
+            tarinfo.size = len(code_bytes)
+            tar.addfile(tarinfo, io.BytesIO(code_bytes))
+        
+        tar_stream.seek(0)
+        # Копируем архив в контейнер в корневую директорию
+        container.put_archive('/', tar_stream)
 
-            # Если код упал с ошибкой (например, SyntaxError)
-            if result["StatusCode"] != 0:
-                return {"status": "fail", "output": logs}
+        # Запускаем контейнер
+        container.start()
 
-            # Код успешно выполнился
-            return {"status": "success", "output": logs}
+        # Ждем завершения с учетом таймаута
+        result = container.wait(timeout=timeout)
+        logs = container.logs().decode("utf-8").strip()
 
-        except Exception:
-            # Если сработал Timeout (бесконечный цикл)
+        if result["StatusCode"] != 0:
+            return {"status": "fail", "output": logs}
+
+        return {"status": "success", "output": logs}
+
+    except requests.exceptions.ReadTimeout:
+        if container:
             container.kill()
-            return {"status": "timeout", "output": "Time Limit Exceeded (Превышено время выполнения)"}
-
-        finally:
-            # Обязательно удаляем контейнер за собой
-            container.remove(force=True)
-
+        return {"status": "timeout", "output": "Time Limit Exceeded (Превышено время выполнения)"}
     except Exception as e:
+        # Пытаемся поймать другие виды таймаутов, если docker-py кидает их
+        if "Timeout" in str(e):
+            if container:
+                container.kill()
+            return {"status": "timeout", "output": "Time Limit Exceeded (Превышено время выполнения)"}
         return {"status": "error", "output": str(e)}
 
     finally:
-        # Удаляем временный файл с кодом
-        shutil.rmtree(temp_dir)
+        if container:
+            try:
+                container.remove(force=True)
+            except Exception:
+                pass

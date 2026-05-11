@@ -4,6 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Analog Stepik"
     DATABASE_URL: str
+    CELERY_BROKER_URL: str = "amqp://guest:guest@localhost:5672//"
 
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
