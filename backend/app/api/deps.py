@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.core import security
 from app.db.database import get_db
 from app.db.models import User
+from sqlalchemy.sql.functions import current_user
 
 #Указываем, где искать токен
 reusable_oauth2 = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -41,3 +42,11 @@ async def get_current_user(
             status_code=status.HTTP_404_NOT_FOUND
         )
     return user
+
+async def get_current_teacher(current_user: User = Depends(get_current_user)):
+    if not current_user.is_teacher:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not a teacher",
+        )
+    return current_user

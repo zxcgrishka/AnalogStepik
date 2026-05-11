@@ -10,15 +10,28 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
+    is_teacher = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 #Класс для проверки заданий
 class Submission(Base):
     __tablename__ = "submissions"
     id = Column(Integer, primary_key=True, index=True)
-    task_id = Column(Integer, index=True) #ID самой задачки, позже, после создания таблицы (например, "Task"), надо будет изменить параметры на "ForeignKey("task_id")"
+    task_id = Column(Integer, ForeignKey("tasks.id"), index=True) #ID самой задачки, позже, после создания таблицы (например, "Task"), надо будет изменить параметры на "ForeignKey("task_id")" ПОДРУЖИЛИ!
     user_id = Column(Integer, ForeignKey("users.id"))
     code_text = Column(Text, nullable=False)
     language = Column(String(50), nullable=False) #Не знаю, зачем добавил, пока что всё-равно только питон будет. Мб позже плюсы добавим
     status = Column(String(50), default="pending")
+    output = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+#Класс для тасков
+class Task(Base):
+    __tablename__ = "tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=False)
+    test_input = Column(Text, nullable=True)  # Что подаем в stdin (пока не используем, но пригодится)
+    test_output = Column(Text, nullable=False) # Эталонный ответ
     created_at = Column(DateTime(timezone=True), server_default=func.now())
