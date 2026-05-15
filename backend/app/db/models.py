@@ -34,4 +34,24 @@ class Task(Base):
     description = Column(Text, nullable=False)
     test_input = Column(Text, nullable=True)  # Что подаем в stdin (пока не используем, но пригодится)
     test_output = Column(Text, nullable=False) # Эталонный ответ
+    course_id = Column(Integer, ForeignKey("courses.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class Course(Base):
+    __tablename__ = "courses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=False)
+    teacher_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class Enrollment(Base):
+    __tablename__ = "enrollments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
+    enrolled_at = Column(DateTime(timezone=True), server_default=func.now())

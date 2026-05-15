@@ -17,7 +17,8 @@ async def create_task(task_in: TaskCreate, db: AsyncSession = Depends(get_db), c
         title=task_in.title,
         description=task_in.description,
         test_input=task_in.test_input,
-        test_output=task_in.test_output
+        test_output=task_in.test_output,
+        course_id = task_in.course_id,
     )
 
     # Сохраняем в базу
