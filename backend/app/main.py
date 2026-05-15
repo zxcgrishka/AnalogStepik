@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.api.routers import auth, submissions, tasks
+from app.api.routers import auth, submissions, tasks, courses, users
 from app.core.config import settings
 
 app = FastAPI(
@@ -11,6 +11,8 @@ app = FastAPI(
 app.include_router(auth.router)
 app.include_router(submissions.router)
 app.include_router(tasks.router)
+app.include_router(courses.router)
+app.include_router(users.router)
 
 @app.get("/")
 async def root():

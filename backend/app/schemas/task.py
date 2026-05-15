@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional, List
+from typing import Optional
+from datetime import datetime
 
 # 1. Схемы для создания и отображения одного теста
 class TestCaseCreate(BaseModel):
@@ -21,12 +23,19 @@ class TaskCreate(BaseModel):
     title: str
     description: str
     test_cases: List[TestCaseCreate]  # Вместо test_input/output теперь список тестов
+    test_input: Optional[str] = None
+    test_output: str
+    course_id: Optional[int] = None
 
 class TaskResponse(BaseModel):
     id: int
     title: str
     description: str
     test_cases: List[TestCaseResponse] # При возврате задачи тоже отдаем список тестов
+    test_input: Optional[str] = None
+    test_output: str
+    course_id: Optional[int] = None
+    created_at: datetime
 
     class Config:
         from_attributes = True
