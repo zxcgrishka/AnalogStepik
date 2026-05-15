@@ -1,6 +1,8 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Boolean, Text
 from sqlalchemy import func
 from app.db.database import Base
+from sqlalchemy.orm import relationship
+
 
 #Класс для пользователя
 class User(Base):
@@ -32,6 +34,16 @@ class Task(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=False)
-    test_input = Column(Text, nullable=True)  # Что подаем в stdin (пока не используем, но пригодится)
-    test_output = Column(Text, nullable=False) # Эталонный ответ
+    test_cases = relationship("TestCase", back_populates="task", cascade="all, delete-orphan")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class TestCase(Base):
+    __tablename__ = "test_cases"
+    id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(Integer, ForeignKey("tasks.id"), index=True)
+    input_data = Column(Text, default="")
+    expected_output = Column(Text)
+    is_hidden = Column(Boolean, default=False)
+    task = relationship("Task", back_populates="test_cases")
+
+
